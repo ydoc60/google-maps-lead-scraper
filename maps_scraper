@@ -1,0 +1,45 @@
+import requests
+from openpyxl import Workbook
+from openpyxl.styles import Font
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+api_key = os.getenv("SERPAPI_KEY")
+
+city = input("Enter city: ")
+business = input("Enter business category: ")
+url = f"https://serpapi.com/search.json?engine=google_maps&q={business}+in+{city}&api_key={api_key}"
+response = requests.get(url)
+
+data = response.json()
+
+local_results = data.get("local_results", [])
+
+wb = Workbook()
+ws = wb.active
+ws.title = "Leads"
+
+ws.append(["Business Name", "Rating", "Address", "Phone", "Website"])
+
+for cell in ws[1]:
+    cell.font = Font(bold=True)
+
+for place in local_results:
+    title = place.get("title", "N/A")
+    rating = place.get("rating", "No rating")
+    address = place.get("address", "No address provided")
+    phone = place.get("phone", "N/A")
+    website = place.get("website", "N/A")
+    ws.append([title, rating, address, phone, website])
+
+for column in ws.columns:
+    max_length = 0
+    col_letter = column[0].column_letter
+    for cell in column:
+        if cell.value:
+            max_length = max(max_length, len(str(cell.value)))
+    ws.column_dimensions[col_letter].width = max_length + 2
+
+wb.save(f"{business}_{city}_leads.xlsx")
+print(f"Done! {len(local_results)} leads saved to Excel.")
